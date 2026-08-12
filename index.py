@@ -15,13 +15,20 @@ def get_vehicle_details(reg_no):
                 res = data["response"]
                 return {
                     "success": True,
-                    "owner_name": res.get("ownerName"),
-                    "maker_model": f"{res.get('maker')} {res.get('model')}",
-                    "fuel": res.get("fuel"),
-                    "rc_status": res.get("rcStatus"),
+                    "owner_name": res.get("owner"),
+                    "father_name": res.get("ownerFatherName"),
+                    "maker": res.get("manufacturer"),
+                    "model": res.get("vehicle"),
+                    "variant": res.get("variant"),
+                    "fuel": res.get("fuelType"),
+                    "present_address": res.get("presentAddress"),
+                    "perm_address": res.get("permAddress"),
                     "chassis": res.get("chassis"),
                     "engine": res.get("engine"),
+                    "reg_date": res.get("regDate"),
+                    "insurance_company": res.get("insuranceCompanyName"),
                     "insurance_upto": res.get("insuranceUpto"),
+                    "financer": res.get("financerName"),
                     "developed_by": "@endedfrr coder petro"
                 }
         return {"success": False, "error": "Vehicle not found or API error"}
