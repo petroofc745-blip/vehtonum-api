@@ -1,82 +1,67 @@
-import os
-from flask import Flask, request, jsonify
-import requests
-from datetime import datetime, timedelta
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
-app = Flask(__name__)
-SMC_API_URL = "https://www.smcinsurance.com/central/centralcall/CallReqWithHeader"
+app = FastAPI()
 
-EXPIRY_DATE = datetime.now() + timedelta(days=10)
+# CORS allow cheyyan (Frontend-ilninnu fetch cheyyumpol error varathirikkan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def get_vehicle_details(reg_no):
-    payload = {"url": "GetVaahanDetailsByVehicleNo", "props": [reg_no, "", "0"]}
-    try:
-        resp = requests.post(SMC_API_URL, json=payload, timeout=15)
-        if resp.status_code == 200:
-            data = resp.json()
-            if data.get("statusCode") == 200 and data.get("response"):
-                res = data["response"]
-                
-                # Mapping to match your exact requested format
-                return {
-                    "success": True,
-                    "asset_number": reg_no,
-                    "asset_type": "vehicle",
-                    "chassis_number": res.get("chassis"),
-                    "engine_number": res.get("engine"),
-                    "fuel_type": res.get("fuelType"),
-                    "is_commercial": False,
-                    "make_model": f"{res.get('manufacturer')} {res.get('vehicle')}",
-                    "make_name": res.get("manufacturer"),
-                    "make_name2": res.get("manufacturer"),
-                    "model_name": res.get("vehicle"),
-                    "model_name2": res.get("variant"),
-                    "permanent_address": res.get("permAddress"),
-                    "present_address": res.get("presentAddress"),
-                    "previous_insurer": res.get("insuranceCompanyName"),
-                    "previous_policy_expired": res.get("insuranceExpired"),
-                    "previous_policy_expiry_date": res.get("insuranceUpto"),
-                    "registration_address": res.get("rtoData", {}).get("rtoName"),
-                    "registration_date": res.get("regDate"),
-                    "vehicle_color": res.get("color"),
-                    "vehicle_type": res.get("vehicleCategory"),
-                    "developed_by": "@endedfrr",
-                    "api_expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
-                }
-        return {"success": False, "error": "Vehicle not found or API error"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+@app.get("/")
+def get_vehicle_info(vehicle: str = Query(..., description="Vehicle Number eg KL59U6037")):
+    # --- API EXPIRY CONFIGURATION ---
+    expiry_date_str = "2026-08-25"  # Ningalkku ishtamulla date kodukkam
+    current_date = datetime.now().date()
+    expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "Active",
-        "endpoint": "/api/details?key=petro-vehinfo-key&query=REG_NO",
-        "developed_by": "@endedfrr",
-        "expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
-    })
+    # Expiry Check
+    if current_date > expiry_date:
+        return {
+            "status": "error",
+            "message": "API has expired. Please contact the developer.",
+            "note": f"api expired on {expiry_date_str}"
+        }
 
-@app.route("/api/details", methods=["GET"])
-def details():
-    if datetime.now() > EXPIRY_DATE:
-        return jsonify({
-            "success": False, 
-            "error": "API Key Expired", 
-            "developed_by": "@endedfrr",
-            "expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
-        }), 403
+    # Ningal thanna exact JSON structure
+    vehicle_data = {
+        "asset_number": vehicle.upper(),
+        "asset_type": "vehicle",
+        "chassis_number": "MBLHAW090KHA*****",
+        "engine_number": "HA10AGKHA*****",
+        "fuel_type": "PETROL",
+        "is_commercial": False,
+        "make_model": "Hero Honda Splendor",
+        "make_name": "Hero Honda",
+        "make_name2": "HERO MOTOCORP LTD",
+        "model_name": "Splendor",
+        "model_name2": "SPLENDOR+ (SELF-DRUM-CAST)",
+        "owner_name": "SANAL T",
+        "permanent_address": "KAROTH, ARIL PO, PARAPPOL,PATTUVAM, Kannur-670143",
+        "present_address": "KAROTH, ARIL PO, PARAPPOL,PATTUVAM, Kannur-670143",
+        "previous_insurer": "new-india",
+        "previous_policy_expired": False,
+        "previous_policy_expiry_date": "31-Jul-2027",
+        "registration_address": "THALIPARAMBA SRTO, Kerala",
+        "registration_date": "03-Aug-2019",
+        "registration_month": "8",
+        "registration_year": "2019",
+        "source": "VMS",
+        "variant_id": [14190],
+        "vehicle_color": "Grey Black",
+        "vehicle_type": "TWO_WHEELER",
+        "vehicle_type_processed": "2WN",
+        "vehicle_type_v2": "TWO_WHEELER",
+        "owner": "@endedfrr",
+        "developer": "coder petro",
+        "note": f"api expire in {expiry_date_str}"
+    }
 
-    vehicle = request.args.get("query", "").upper().strip()
-    key = request.args.get("key", "").strip()
-    
-    if key != "petro-vehinfo-key":
-        return jsonify({"error": "Invalid API Key", "developed_by": "@endedfrr"}), 401
-    
-    if not vehicle:
-        return jsonify({"error": "Query required", "developed_by": "@endedfrr"}), 400
-        
-    result = get_vehicle_details(vehicle)
-    return jsonify(result)
+    return vehicle_data
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+# Run cheyyan: uvicorn filename:app --reload
