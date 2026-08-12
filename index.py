@@ -7,7 +7,7 @@ app = Flask(__name__)
 SMC_API_URL = "https://www.smcinsurance.com/central/centralcall/CallReqWithHeader"
 
 # API Expiry set to 10 days from now
-EXPIRY_DATE = datetime.now() + timedelta(days=15)
+EXPIRY_DATE = datetime.now() + timedelta(days=10)
 
 def get_vehicle_details(reg_no):
     payload = {"url": "GetVaahanDetailsByVehicleNo", "props": [reg_no, "", "0"]}
@@ -37,12 +37,21 @@ def get_vehicle_details(reg_no):
                     "pucc_valid_upto": res.get("puccValidUpto"),
                     "financer": res.get("financerName"),
                     "rto_name": res.get("rtoData", {}).get("rtoName"),
-                    "developed_by": "@endedfrr",
+                    "developed_by": "@endedfrr coder petro",
                     "api_expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
                 }
         return {"success": False, "error": "Vehicle not found or API error"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "Active",
+        "endpoint": "/api/details?key=petro-vehinfo-key&query=REG_NO",
+        "developed_by": "@endedfrr",
+        "expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
+    })
 
 @app.route("/api/details", methods=["GET"])
 def details():
@@ -58,7 +67,7 @@ def details():
     vehicle = request.args.get("query", "").upper().strip()
     key = request.args.get("key", "").strip()
     
-    if key != "petro-vehtonum-key":
+    if key != "petro-vehinfo-key":
         return jsonify({"error": "Invalid API Key", "developed_by": "@endedfrr"}), 401
     
     if not vehicle:
