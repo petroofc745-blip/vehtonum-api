@@ -1,9 +1,13 @@
 import os
 from flask import Flask, request, jsonify
 import requests
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 SMC_API_URL = "https://www.smcinsurance.com/central/centralcall/CallReqWithHeader"
+
+# API Expiry set to 10 days from now
+EXPIRY_DATE = datetime.now() + timedelta(days=15)
 
 def get_vehicle_details(reg_no):
     payload = {"url": "GetVaahanDetailsByVehicleNo", "props": [reg_no, "", "0"]}
@@ -17,19 +21,24 @@ def get_vehicle_details(reg_no):
                     "success": True,
                     "owner_name": res.get("owner"),
                     "father_name": res.get("ownerFatherName"),
+                    "present_address": res.get("presentAddress"),
+                    "permanent_address": res.get("permAddress"),
+                    "pincode": res.get("pincode"),
                     "maker": res.get("manufacturer"),
                     "model": res.get("vehicle"),
                     "variant": res.get("variant"),
                     "fuel": res.get("fuelType"),
-                    "present_address": res.get("presentAddress"),
-                    "perm_address": res.get("permAddress"),
                     "chassis": res.get("chassis"),
                     "engine": res.get("engine"),
                     "reg_date": res.get("regDate"),
                     "insurance_company": res.get("insuranceCompanyName"),
                     "insurance_upto": res.get("insuranceUpto"),
+                    "insurance_expired": res.get("insuranceExpired"),
+                    "pucc_valid_upto": res.get("puccValidUpto"),
                     "financer": res.get("financerName"),
-                    "developed_by": "@endedfrr coder petro"
+                    "rto_name": res.get("rtoData", {}).get("rtoName"),
+                    "developed_by": "@endedfrr",
+                    "api_expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
                 }
         return {"success": False, "error": "Vehicle not found or API error"}
     except Exception as e:
@@ -37,14 +46,23 @@ def get_vehicle_details(reg_no):
 
 @app.route("/api/details", methods=["GET"])
 def details():
+    # Check if API expired
+    if datetime.now() > EXPIRY_DATE:
+        return jsonify({
+            "success": False, 
+            "error": "API Key Expired", 
+            "developed_by": "@endedfrr",
+            "expiry_date": EXPIRY_DATE.strftime("%d-%m-%Y")
+        }), 403
+
     vehicle = request.args.get("query", "").upper().strip()
     key = request.args.get("key", "").strip()
     
     if key != "petro-vehtonum-key":
-        return jsonify({"error": "Invalid API Key", "developed_by": "@endedfrr coder petro"}), 401
+        return jsonify({"error": "Invalid API Key", "developed_by": "@endedfrr"}), 401
     
     if not vehicle:
-        return jsonify({"error": "Query required", "developed_by": "@endedfrr coder petro"}), 400
+        return jsonify({"error": "Query required", "developed_by": "@endedfrr"}), 400
         
     result = get_vehicle_details(vehicle)
     return jsonify(result)
